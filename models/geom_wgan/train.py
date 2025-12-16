@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from torchvision.utils import make_grid, save_image
 
 from datasets.mnist import get_mnist_loader
-from datasets.generate_2d_toys import get_toy2d_loader  # NOTE: folder name "2d_toys" is not importable in Python.
+from datasets.generate_2d_toys import get_toy2d_loader
 
 from .nets import GeneratorMNIST, CriticMNIST, Generator2D, Critic2D
 from .metrics import sliced_wasserstein_2d, sliced_wasserstein_images, gradient_penalty
@@ -24,7 +24,7 @@ def seed_everything(seed: int):
 
 @dataclass
 class TrainConfig:
-    dataset: str = "mnist"      # mnist | swissroll | checkerboard | gmm
+    dataset: str = "swissroll"      # swissroll | checkerboard | gmm
     outdir: str = "outputs/wgan"
     epochs: int = 50
     batch_size: int = 256
@@ -207,8 +207,8 @@ def train_toy2d(cfg: TrainConfig):
 
 def parse_args() -> TrainConfig:
     p = argparse.ArgumentParser()
-    p.add_argument("--dataset", type=str, default="mnist",
-                   choices=["mnist", "swissroll", "checkerboard", "gmm"])
+    p.add_argument("--dataset", type=str, default="swissroll",
+                   choices=["swissroll", "checkerboard", "gmm"])
     p.add_argument("--outdir", type=str, default="outputs/wgan")
     p.add_argument("--epochs", type=int, default=50)
     p.add_argument("--batch-size", type=int, default=256)
@@ -229,8 +229,6 @@ def parse_args() -> TrainConfig:
     p.add_argument("--toy-depth", type=int, default=5)
     p.add_argument("--n-critic-toy", type=int, default=10)
 
-    # mnist
-    p.add_argument("--mnist-root", type=str, default="datasets/mnist")
     p.add_argument("--num-workers", type=int, default=4)
 
     a = p.parse_args()

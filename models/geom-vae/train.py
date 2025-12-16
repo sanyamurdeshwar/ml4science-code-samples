@@ -9,9 +9,8 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 
-from datasets.mnist import get_mnist_loader
-from datasets.toy2d import get_toy2d_loader   # rename your folder to toy2d
-from datasets.toy3d import get_toy3d_loader   # rename your folder to toy3d
+from datasets.toy2d import get_toy2d_loader
+from datasets.toy3d import get_toy3d_loader
 
 from .nets import VAEConv, VAEMlp, VAEManifoldMlp
 from .losses import kld_loss, sphere_rec_loss, hyper_rec_loss_x1x2x0, mse_rec_loss
@@ -26,7 +25,7 @@ def seed_everything(seed: int):
 
 @dataclass
 class TrainConfig:
-    dataset: str = "mnist"  # mnist | swissroll | checkerboard | gmm | sphere | hyperboloid
+    dataset: str = "swissroll"  #swissroll | checkerboard | gmm | sphere | hyperboloid
     outdir: str = "outputs/geom_vae"
     epochs: int = 200
     batch_size: int = 512
@@ -35,11 +34,9 @@ class TrainConfig:
     zdim: int = 32
     # toy sampling
     n_samples: int = 8000
-    num_mixture: int = 8
+    num_mixture: int = 8 # for gmm / checkerboard
     radius: float = 8.0
     sigma: float = 1.0
-    # mnist
-    mnist_root: str = "datasets/mnist"
     num_workers: int = 4
 
 def _plot_points(real: np.ndarray, gen: np.ndarray, outpath: Path, title: str):
@@ -66,38 +63,6 @@ def train(cfg: TrainConfig):
 
     ds = cfg.dataset.lower()
 
-    # ---- MNIST ----
-    if ds == "mnist":
-        loader = get_mnist_loader(root=cfg.mnist_root, batch_size=cfg.batch_size,
-                                 num_workers=cfg.num_workers, train=True, download=True)
-        vae = VAEConv(zdim=cfg.zdim).to(DEVICE)
-        opt = torch.optim.Adam(vae.parameters(), lr=cfg.lr)
-
-        for ep in range(1, cfg.epochs + 1):
-            vae.train()
-            losses = []
-            for x, _ in loader:
-                x = x.to(DEVICE)
-                xrec, mu, logvar = vae(x)
-                bce = F.binary_cross_entropy(xrec, x, reduction="mean") * 784
-                kld = kld_loss(mu, logvar)
-                loss = bce + kld
-                opt.zero_grad(set_to_none=True)
-                loss.backward()
-                opt.step()
-                losses.append(loss.item())
-            if ep % 10 == 0 or ep == 1:
-                print(f"[MNIST] ep {ep}/{cfg.epochs} loss {np.mean(losses):.4f}")
-
-        # sample grid
-        vae.eval()
-        with torch.no_grad():
-            z = torch.randn(64, cfg.zdim, device=DEVICE)
-            samples = vae.decode(z).cpu().clamp(0, 1)
-        from torchvision.utils import make_grid, save_image
-        grid = make_grid(samples, nrow=8, pad_value=1.0)
-        save_image(grid, outdir / "samples.png")
-        return
 
     # ---- 2D / 3D point clouds ----
     if ds in ["swissroll", "checkerboard", "gmm"]:
@@ -128,7 +93,7 @@ def train(cfg: TrainConfig):
 
     for ep in range(1, cfg.epochs + 1):
         vae.train()
-        kld_w = min(1.0, ep / 50.0)  # gentle anneal like your script
+        kld_w = min(1.0, ep / 50.0) 
         meters = []
         for x in loader:
             x = x.to(DEVICE)
@@ -164,8 +129,8 @@ def train(cfg: TrainConfig):
 
 def parse_args() -> TrainConfig:
     p = argparse.ArgumentParser()
-    p.add_argument("--dataset", type=str, default="mnist",
-                   choices=["mnist", "swissroll", "checkerboard", "gmm", "sphere", "hyperboloid"])
+    p.add_argument("--dataset", type=str, default="swissroll",
+                   choices=["swissroll", "checkerboard", "gmm", "sphere", "hyperboloid"])
     p.add_argument("--outdir", type=str, default="outputs/geom_vae")
     p.add_argument("--epochs", type=int, default=200)
     p.add_argument("--batch-size", type=int, default=512)
@@ -176,7 +141,6 @@ def parse_args() -> TrainConfig:
     p.add_argument("--num-mixture", type=int, default=8)
     p.add_argument("--radius", type=float, default=8.0)
     p.add_argument("--sigma", type=float, default=1.0)
-    p.add_argument("--mnist-root", type=str, default="datasets/mnist")
     p.add_argument("--num-workers", type=int, default=4)
     a = p.parse_args()
     return TrainConfig(**vars(a))

@@ -40,7 +40,6 @@ class SphereCheckerBoardFull(Dataset):
     def __getitem__(self, idx: int) -> torch.Tensor: return self.coords_3d[idx]
 
 class HyperboloidCheckerBoardFull(Dataset):
-    """Returns points in [x1, x2, x0] with x0 time-like (cosh r), upper sheet."""
     def __init__(self, n_samples: int = 8000, seed: int = 42,
                  tiles_theta: int = 24, tiles_m: int = 12, R: float = 3.2):
         rng = np.random.default_rng(seed)
